@@ -1,0 +1,991 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>La saturación de Nitrógeno en sangre y tejidos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,400;0,500;0,600;0,700;1,500&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+  :root{
+    --bg-deep:#071824;
+    --bg-panel:#0d2635;
+    --bg-panel-2:#0a2130;
+    --ink:#d9ecf2;
+    --ink-dim:#8fb4c2;
+    --line:#24506a;
+    --line-soft:#173a4c;
+    --accent-cyan:#39c7e0;
+
+    --n2-base:#3ddc84;        /* N2 disuelto ya presente */
+    --n2-in:#a8ffcf;          /* exceso que aun debe ENTRAR */
+    --n2-out:#f5922f;         /* exceso que debe SALIR */
+    --bubble:#fff2dd;         /* microburbujas */
+
+    --font-display:'Archivo','Helvetica Neue',Arial,sans-serif;
+    --font-mono:'JetBrains Mono','SF Mono',Consolas,monospace;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;background:var(--bg-deep);color:var(--ink);font-family:var(--font-display);}
+  body{
+    min-height:100%;
+    background:
+      radial-gradient(ellipse 900px 500px at 12% -12%, rgba(57,199,224,0.10), transparent 60%),
+      radial-gradient(ellipse 700px 500px at 100% 112%, rgba(61,220,132,0.06), transparent 60%),
+      var(--bg-deep);
+    padding:26px 26px 34px;
+  }
+  .app{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:16px;}
+
+  /* ---------- header ---------- */
+  .hud-header{
+    display:flex;justify-content:space-between;align-items:flex-end;
+    gap:24px;flex-wrap:wrap;border-bottom:1px solid var(--line-soft);padding-bottom:16px;
+  }
+  .eyebrow{
+    display:block;font:600 12px/1 var(--font-mono);letter-spacing:0.14em;
+    text-transform:uppercase;color:var(--accent-cyan);margin-bottom:9px;
+  }
+  h1{margin:0 0 7px;font:700 33px/1.05 var(--font-display);letter-spacing:-0.01em;text-wrap:balance;}
+  .subtitle{margin:0;max-width:56ch;font:400 14.5px/1.5 var(--font-display);color:var(--ink-dim);}
+
+  .hud-readout{display:flex;gap:12px;}
+  .readout-item{
+    background:var(--bg-panel);border:1px solid var(--line);border-radius:10px;
+    padding:9px 16px;min-width:126px;text-align:right;
+  }
+  .readout-label{
+    display:block;font:600 10px/1 var(--font-mono);letter-spacing:0.1em;
+    text-transform:uppercase;color:var(--ink-dim);margin-bottom:6px;
+  }
+  .readout-value{
+    display:block;font:700 21px/1 var(--font-mono);
+    font-variant-numeric:tabular-nums;color:var(--ink);
+  }
+
+  /* ---------- phase banner ---------- */
+  .phase-banner{
+    display:flex;align-items:center;gap:10px;background:var(--bg-panel);
+    border:1px solid var(--line);border-left:3px solid var(--accent-cyan);
+    border-radius:8px;padding:11px 15px;font:500 14px/1.4 var(--font-display);
+  }
+  .phase-tag{
+    flex:none;font:700 10px/1 var(--font-mono);letter-spacing:0.08em;text-transform:uppercase;
+    color:var(--accent-cyan);background:rgba(57,199,224,0.12);border-radius:5px;padding:5px 8px;
+  }
+
+  /* ---------- panels ---------- */
+  .panels{display:grid;grid-template-columns:400fr 700fr;gap:16px;align-items:start;}
+
+  .panel-card{
+    background:var(--bg-panel);border:1px solid var(--line);border-radius:14px;
+    padding:15px 15px 13px;display:flex;flex-direction:column;gap:10px;min-width:0;
+  }
+  .panel-title{
+    font:600 12px/1 var(--font-mono);letter-spacing:0.08em;
+    text-transform:uppercase;color:var(--ink-dim);
+  }
+  /* El SVG con viewBox ya lleva su propia relacion de aspecto: dejandole
+     height:auto se dimensiona solo en cualquier navegador. Nada de
+     aspect-ratio + position:absolute, que colapsa a altura 0 en varios
+     navegadores moviles y deja el grafico invisible.                     */
+  .profile-frame,.compartments-frame{position:relative;width:100%;}
+  .profile-frame svg,.compartments-frame svg{display:block;width:100%;height:auto;}
+  .compartments-frame canvas{
+    position:absolute;inset:0;width:100%;height:100%;pointer-events:none;
+  }
+
+  figure{margin:0;}
+  figcaption{margin:2px 2px 0;font:400 12.5px/1.5 var(--font-display);color:var(--ink-dim);}
+
+  svg text{font-family:var(--font-display);fill:var(--ink-dim);}
+  svg text.vessel-label{fill:var(--ink);font-weight:600;letter-spacing:0.06em;}
+
+  /* ---------- cartel de estado ---------- */
+  .status-card{
+    border:1.5px solid var(--n2-base);border-radius:11px;
+    background:rgba(61,220,132,0.10);padding:13px 17px;
+    display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;
+    transition:border-color .45s ease, background-color .45s ease;
+  }
+  .status-name{
+    font:700 21px/1.1 var(--font-display);letter-spacing:-0.005em;
+    color:var(--n2-base);transition:color .45s ease;
+  }
+  .status-note{font:400 13px/1.4 var(--font-display);color:var(--ink-dim);flex:1;min-width:240px;}
+
+  .status-card.is-in{border-color:var(--n2-in);background:rgba(168,255,207,0.10);}
+  .status-card.is-in .status-name{color:var(--n2-in);}
+  .status-card.is-eq{border-color:var(--n2-base);background:rgba(61,220,132,0.10);}
+  .status-card.is-eq .status-name{color:var(--n2-base);}
+  .status-card.is-out{border-color:var(--n2-out);background:rgba(245,146,47,0.11);}
+  .status-card.is-out .status-name{color:var(--n2-out);}
+
+  /* ---------- leyenda ---------- */
+  .legend{display:flex;gap:16px;flex-wrap:wrap;padding:2px 2px 0;}
+  .legend-item{display:flex;align-items:center;gap:7px;font:400 12px/1.3 var(--font-display);color:var(--ink-dim);}
+  .swatch{width:13px;height:13px;border-radius:3px;flex:none;}
+  .swatch.base{background:rgba(61,220,132,0.30);border:1px solid var(--n2-base);}
+  .swatch.into{background:rgba(168,255,207,0.45);border:1px solid var(--n2-in);}
+  .swatch.outof{background:rgba(245,146,47,0.45);border:1px solid var(--n2-out);}
+  .swatch.bubble{border-radius:50%;background:rgba(255,242,221,0.18);border:1.5px solid var(--bubble);}
+
+  /* ---------- transport ---------- */
+  .transport{
+    display:flex;align-items:center;gap:14px;background:var(--bg-panel);
+    border:1px solid var(--line);border-radius:12px;padding:11px 15px;
+  }
+  .transport button{
+    font:600 13px/1 var(--font-display);color:var(--bg-deep);background:var(--accent-cyan);
+    border:none;border-radius:8px;padding:11px 18px;cursor:pointer;
+    display:flex;align-items:center;gap:7px;transition:transform .15s ease,filter .15s ease;
+  }
+  .transport button:hover{filter:brightness(1.08);}
+  .transport button:active{transform:translateY(1px);}
+  .transport button.secondary{background:transparent;color:var(--ink);border:1px solid var(--line);}
+  .transport button:focus-visible,.transport input:focus-visible{outline:2px solid var(--accent-cyan);outline-offset:2px;}
+
+  .scrub-wrap{flex:1;display:flex;align-items:center;gap:10px;}
+  .scrub-wrap input[type="range"]{flex:1;appearance:none;height:5px;border-radius:3px;background:var(--line);outline:none;}
+  .scrub-wrap input[type="range"]::-webkit-slider-thumb{
+    appearance:none;width:15px;height:15px;border-radius:50%;
+    background:var(--accent-cyan);border:2px solid var(--bg-deep);cursor:pointer;
+  }
+  .scrub-wrap input[type="range"]::-moz-range-thumb{
+    width:15px;height:15px;border-radius:50%;
+    background:var(--accent-cyan);border:2px solid var(--bg-deep);cursor:pointer;
+  }
+  .scrub-label{font:500 12px var(--font-mono);color:var(--ink-dim);min-width:2ch;}
+
+  .footnote{font:400 12.5px/1.65 var(--font-display);color:var(--ink-dim);padding:2px 4px 0;max-width:104ch;}
+  .footnote b{color:var(--ink);font-weight:600;}
+
+  /* señal inequivoca de si el guion llega a ejecutarse */
+  #jsCheck,#jsOff{
+    margin:0;padding:10px 14px;border-radius:9px;
+    background:rgba(57,199,224,0.10);border:1px solid var(--accent-cyan);
+    color:var(--ink);font:500 12.5px/1.45 var(--font-display);
+  }
+  #jsOff{background:rgba(245,146,47,0.12);border-color:var(--n2-out);}
+
+  /* si el navegador atasca el guion, que se vea el motivo en pantalla */
+  #jsError{
+    margin:0;padding:11px 14px;border-radius:9px;
+    background:#3a1410;border:1px solid #f5922f;color:#ffd9b8;
+    font:500 12.5px/1.45 var(--font-mono);word-break:break-word;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .transport button,.status-card,.status-name{transition:none;}
+  }
+
+  /* ---------- movil: perfil y compartimentos visibles a la vez ---------- */
+  @media (max-width:820px){
+    body{padding:11px 11px 18px;}
+    .app{gap:7px;}
+    .panels{grid-template-columns:1fr;gap:9px;}
+
+    .hud-header{padding-bottom:9px;gap:10px;align-items:center;}
+    h1{font-size:19px;margin:0;}
+    .eyebrow{font-size:9.5px;letter-spacing:0.1em;margin-bottom:5px;}
+    .subtitle{display:none;}
+    .phase-banner{display:none;}
+
+    .hud-readout{gap:7px;}
+    .readout-item{padding:6px 10px;min-width:0;border-radius:8px;}
+    .readout-label{font-size:8.5px;margin-bottom:3px;}
+    .readout-value{font-size:15px;}
+
+    .panel-card{padding:9px;gap:7px;border-radius:11px;}
+    .panel-title{display:none;}
+    figcaption{display:none;}
+
+    .status-card{padding:8px 11px;gap:2px;border-radius:9px;flex-direction:column;align-items:flex-start;}
+    .status-name{font-size:16px;}
+    .status-note{font-size:11.5px;min-width:0;line-height:1.32;}
+
+    /* los mandos suben justo bajo el titulo: siempre a mano y sin tapar nada */
+    .hud-header{order:-2;}
+    .transport{order:-1;}
+
+    .legend{gap:9px;}
+    .legend-item{font-size:10.5px;gap:5px;}
+    .swatch{width:11px;height:11px;}
+
+    .transport{padding:8px 10px;gap:9px;border-radius:10px;}
+    .transport button{padding:9px 13px;font-size:12px;border-radius:7px;}
+    .scrub-label{font-size:11px;}
+
+    .footnote{font-size:11.5px;line-height:1.55;}
+  }
+</style>
+</head>
+<body>
+
+
+<div class="app">
+
+  <p id="jsError" hidden></p>
+  <p id="jsCheck">Cargando la animación… Si este aviso no desaparece, este visor no está
+    ejecutando JavaScript: guarda el archivo y ábrelo con Safari o Chrome.</p>
+  <noscript><p id="jsOff">Este visor tiene JavaScript desactivado: los dibujos se ven
+    fijos y los mandos no funcionan. Ábrelo en un navegador.</p></noscript>
+
+  <header class="hud-header">
+    <div class="title-block">
+      <span class="eyebrow">Club Aquanautas · Curso B1E FEDAS · Nivel 1 de 3</span>
+      <h1>La saturación de Nitrógeno en sangre y tejidos</h1>
+      <p class="subtitle">Cómo el N₂ pasa de los alveolos a la sangre y a los tejidos al descender, y cómo vuelve a salir al ascender y en superficie.</p>
+    </div>
+    <div class="hud-readout">
+      <div class="readout-item">
+        <span class="readout-label">Profundidad</span>
+        <span class="readout-value" id="depthValue">0 m</span>
+      </div>
+      <div class="readout-item">
+        <span class="readout-label">Tiempo</span>
+        <span class="readout-value" id="timeValue">00:00</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="phase-banner" aria-live="polite">
+    <span class="phase-tag" id="phaseTag">Superficie</span>
+    <span id="phaseText">Pulsa «Bucear» para iniciar el descenso.</span>
+  </div>
+
+  <main class="panels">
+
+    <!-- ============ PERFIL ============ -->
+    <section class="panel-card">
+      <span class="panel-title">Perfil de inmersión</span>
+      <figure class="profile-frame">
+        <svg id="profileSvg" viewBox="0 0 400 520" role="img" aria-label="Perfil de inmersión: descenso a 24 metros, 15 minutos de fondo, ascenso lento de 15 minutos con parada de seguridad a 5 metros, y 25 minutos de intervalo en superficie. Un buceador de perfil recorre la trayectoria.">
+
+          <g id="depthGrid"><line x1="52" x2="382" y1="55.06293706293707" y2="55.06293706293707" stroke="#173a4c" stroke-width="1"></line><text x="45" y="59.06293706293707" text-anchor="end" font-size="10.5">0</text><line x1="52" x2="382" y1="133.38461538461536" y2="133.38461538461536" stroke="#173a4c" stroke-width="1"></line><text x="45" y="137.38461538461536" text-anchor="end" font-size="10.5">5</text><line x1="52" x2="382" y1="211.7062937062937" y2="211.7062937062937" stroke="#173a4c" stroke-width="1"></line><text x="45" y="215.7062937062937" text-anchor="end" font-size="10.5">10</text><line x1="52" x2="382" y1="290.02797202797206" y2="290.02797202797206" stroke="#173a4c" stroke-width="1"></line><text x="45" y="294.02797202797206" text-anchor="end" font-size="10.5">15</text><line x1="52" x2="382" y1="368.34965034965035" y2="368.34965034965035" stroke="#173a4c" stroke-width="1"></line><text x="45" y="372.34965034965035" text-anchor="end" font-size="10.5">20</text><line x1="52" x2="382" y1="446.6713286713287" y2="446.6713286713287" stroke="#173a4c" stroke-width="1"></line><text x="45" y="450.6713286713287" text-anchor="end" font-size="10.5">25</text></g>
+          <g id="timeGrid"><line x1="52" x2="52" y1="30" y2="478" stroke="#173a4c" stroke-width="1"></line><text x="52" y="496" text-anchor="middle" font-size="10.5">0</text><line x1="109.89473684210526" x2="109.89473684210526" y1="30" y2="478" stroke="#173a4c" stroke-width="1"></line><text x="109.89473684210526" y="496" text-anchor="middle" font-size="10.5">10</text><line x1="167.78947368421052" x2="167.78947368421052" y1="30" y2="478" stroke="#173a4c" stroke-width="1"></line><text x="167.78947368421052" y="496" text-anchor="middle" font-size="10.5">20</text><line x1="225.68421052631578" x2="225.68421052631578" y1="30" y2="478" stroke="#173a4c" stroke-width="1"></line><text x="225.68421052631578" y="496" text-anchor="middle" font-size="10.5">30</text><line x1="283.57894736842104" x2="283.57894736842104" y1="30" y2="478" stroke="#173a4c" stroke-width="1"></line><text x="283.57894736842104" y="496" text-anchor="middle" font-size="10.5">40</text><line x1="341.4736842105263" x2="341.4736842105263" y1="30" y2="478" stroke="#173a4c" stroke-width="1"></line><text x="341.4736842105263" y="496" text-anchor="middle" font-size="10.5">50</text></g>
+          <line id="axisY" stroke="#24506a" stroke-width="1.5" x1="52" x2="52" y1="30" y2="478"></line>
+          <line id="axisX" stroke="#24506a" stroke-width="1.5" x1="52" x2="382" y1="478" y2="478"></line>
+          <text id="labDepth" x="12" y="17" font-size="10.5">Profundidad (m)</text>
+          <text id="labTime" x="217" y="512" font-size="10.5" text-anchor="middle">Tiempo (min)</text>
+
+          <path id="profileGhost" fill="none" stroke="#24506a" stroke-width="2.5" stroke-linejoin="round" d="M52.00,55.06 L63.58,431.01 L150.42,431.01 L214.11,133.38 L231.47,133.38 L237.26,55.06 L382.00,55.06"></path>
+          <path id="profileTraveled" fill="none" stroke="#39c7e0" stroke-width="2.5" stroke-linejoin="round" d="M52.00,55.06 L63.58,431.01 L150.42,431.01 L214.11,133.38 L231.47,133.38 L237.26,55.06 L382.00,55.06" style="stroke-dasharray: 1007.96; stroke-dashoffset: 1007.96;"></path>
+
+          <g id="diverBubbles">
+            <circle r="1.9" fill="#39c7e0" opacity="0.12" cx="58.68" cy="25.96"></circle>
+            <circle r="1.4" fill="#39c7e0" opacity="0.47" cx="63.17" cy="42.34"></circle>
+            <circle r="2.3" fill="#39c7e0" opacity="0.28" cx="64.75" cy="33.50"></circle>
+          </g>
+
+          <!-- buceador de perfil mirando a la derecha -->
+          <g id="diverGroup" transform="translate(52.00,55.06) rotate(13.2) scale(0.72)">
+            <path d="M-17,-2.2 L-29,-8 L-26.5,-0.6 Z" fill="#8fb4c2"></path>
+            <path d="M-17,2.2  L-29,8  L-26.5,0.6 Z" fill="#8fb4c2"></path>
+            <path d="M-4,-3.6 L-17,-2.1 L-17,2.1 L-4,3.6 Z" fill="#a9c9d6"></path>
+            <rect x="-2.5" y="-10.5" width="9.5" height="5.6" rx="2.6" fill="#39c7e0"></rect>
+            <rect x="5.2" y="-12.2" width="2.2" height="2.2" rx="0.7" fill="#8fb4c2"></rect>
+            <path d="M5,-9.5 Q17,-10.5 17.5,-3.5" fill="none" stroke="#8fb4c2" stroke-width="1.2" stroke-linecap="round"></path>
+            <ellipse cx="3" cy="0" rx="8.4" ry="5.1" fill="#cfe4ec"></ellipse>
+            <path d="M8,1.2 L16.5,4.4 L15.4,6.6 L7,4.2 Z" fill="#a9c9d6"></path>
+            <circle cx="13.4" cy="-1.6" r="4.3" fill="#cfe4ec"></circle>
+            <path d="M13.6,-4.4 L18.2,-3.6 L18.2,-0.6 L13.6,0.1 Z" fill="#39c7e0"></path>
+          </g>
+        
+          </svg>
+      </figure>
+      <figcaption>Descenso a 24 m · 15 min de fondo · ascenso lento de 15 min con parada a 5 m · 25 min en superficie.</figcaption>
+    </section>
+
+    <!-- ============ COMPARTIMENTOS ============ -->
+    <section class="panel-card">
+      <span class="panel-title">Alveolos, sangre y tejidos</span>
+
+      <div class="status-card is-eq" id="statusCard" aria-live="polite">
+        <span class="status-name" id="statusName">Tejidos saturados</span>
+        <span class="status-note" id="statusNote">Equilibrio: los tejidos contienen el N₂ que corresponde a esta presión. No hay flujo neto.</span>
+      </div>
+
+      <figure class="compartments-frame">
+        <svg id="compSvg" viewBox="0 0 700 520" role="img" aria-label="Alveolos, sangre y tejidos conectados entre sí. El relleno verde es el nitrógeno disuelto; el exceso que aún debe entrar se marca en verde claro y el exceso que debe salir en naranja. Durante la sobresaturación aparecen microburbujas en los tejidos.">
+
+          <defs>
+            <!-- dos puntas de flecha con color literal: currentColor dentro de
+                 un marker no se hereda de forma fiable en WebKit -->
+            <marker id="arrowIn" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="#a8ffcf"></path>
+            </marker>
+            <marker id="arrowOut" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="#f5922f"></path>
+            </marker>
+          </defs>
+
+          <rect id="pipe0" fill="#0a2130" stroke="#24506a" stroke-width="1.5" rx="13" x="6" y="233" width="62" height="22"></rect>
+          <rect id="pipe1" fill="#0a2130" stroke="#24506a" stroke-width="1.5" rx="13" x="212" y="233" width="63" height="22"></rect>
+          <rect id="pipe2" fill="#0a2130" stroke="#24506a" stroke-width="1.5" rx="13" x="425" y="233" width="63" height="22"></rect>
+          <line id="pipe0Flow" stroke="#a8ffcf" stroke-width="4" stroke-linecap="round" stroke-dasharray="8 11" marker-end="url(#arrowIn)" y1="244" y2="244" x1="15" x2="57" style="opacity: 0.15; stroke-dashoffset: -53.2644;"></line>
+          <line id="pipe1Flow" stroke="#a8ffcf" stroke-width="4" stroke-linecap="round" stroke-dasharray="8 11" marker-end="url(#arrowIn)" y1="244" y2="244" x1="217" x2="270" style="opacity: 0.15; stroke-dashoffset: -53.2644;"></line>
+          <line id="pipe2Flow" stroke="#a8ffcf" stroke-width="4" stroke-linecap="round" stroke-dasharray="8 11" marker-end="url(#arrowIn)" y1="244" y2="244" x1="430" x2="483" style="opacity: 0.15; stroke-dashoffset: -53.2644;"></line>
+
+          <g id="vesselAlv">
+            <rect class="v-outline" fill="#0a2130" stroke="#24506a" stroke-width="1.75" rx="16" x="62" y="72" width="150" height="344"></rect>
+            <rect class="v-base" fill="rgba(61,220,132,0.24)" x="70" width="134" y="338.9094777215114" height="69.0905222784886"></rect>
+            <rect class="v-excess" fill="rgba(168,255,207,0.42)" x="70" width="134" height="0"></rect>
+            <line class="v-surface" stroke="#3ddc84" stroke-width="2.2" x1="70" x2="204" y1="338.9094777215114" y2="338.9094777215114"></line>
+            <text class="vessel-label" text-anchor="middle" font-size="15" x="137" y="446">ALVEOLOS</text>
+          </g>
+          <g id="vesselBlood">
+            <rect class="v-outline" fill="#0a2130" stroke="#24506a" stroke-width="1.75" rx="16" x="275" y="72" width="150" height="344"></rect>
+            <rect class="v-base" fill="rgba(61,220,132,0.24)" x="283" width="134" y="338.9094777215114" height="69.0905222784886"></rect>
+            <rect class="v-excess" fill="rgba(168,255,207,0.42)" x="283" width="134" height="0"></rect>
+            <line class="v-surface" stroke="#3ddc84" stroke-width="2.2" x1="283" x2="417" y1="338.9094777215114" y2="338.9094777215114"></line>
+            <text class="vessel-label" text-anchor="middle" font-size="15" x="350" y="446">SANGRE</text>
+          </g>
+          <g id="vesselTissue">
+            <rect class="v-outline" fill="#0a2130" stroke="#24506a" stroke-width="1.75" rx="16" x="488" y="72" width="150" height="344"></rect>
+            <rect class="v-base" fill="rgba(61,220,132,0.24)" x="496" width="134" y="338.9094777215114" height="69.0905222784886"></rect>
+            <rect class="v-excess" fill="rgba(168,255,207,0.42)" x="496" width="134" height="0"></rect>
+            <line class="v-surface" stroke="#3ddc84" stroke-width="2.2" x1="496" x2="630" y1="338.9094777215114" y2="338.9094777215114"></line>
+            <text class="vessel-label" text-anchor="middle" font-size="15" x="563" y="446">TEJIDOS</text>
+          </g>
+
+          <text id="labAir" x="6" y="56" font-size="11" fill="#8fb4c2">Vía aérea · aire inspirado y espirado (79 % N₂)</text>
+          <text id="labTissue" x="488" y="56" font-size="11" fill="#8fb4c2">Tejido rápido · período 2 min</text>
+        
+          </svg>
+        <canvas id="bubblesCanvas" aria-hidden="true"></canvas>
+      </figure>
+
+      <div class="legend">
+        <span class="legend-item"><span class="swatch base"></span>N₂ disuelto</span>
+        <span class="legend-item"><span class="swatch into"></span>Falta por entrar</span>
+        <span class="legend-item"><span class="swatch outof"></span>Exceso que debe salir</span>
+        <span class="legend-item"><span class="swatch bubble"></span>Microburbujas</span>
+      </div>
+    </section>
+
+  </main>
+
+  <div class="transport">
+    <button id="playBtn" type="button">▶ Bucear</button>
+    <button id="restartBtn" type="button" class="secondary">⟲ Reiniciar</button>
+    <div class="scrub-wrap">
+      <span class="scrub-label">0</span>
+      <input id="scrub" type="range" min="0" max="1000" value="0" aria-label="Avanzar manualmente en la inmersión">
+      <span class="scrub-label">57</span>
+    </div>
+  </div>
+
+  <p class="footnote">El N₂ de los alveolos, la sangre y los tejidos está <b>disuelto</b>: es el relleno de color, no burbujas. Las <b>microburbujas</b> solo aparecen cuando los tejidos quedan <b>sobresaturados</b>, y su número y tamaño siguen al gradiente: máximo nada más llegar a la parada, menos durante la parada, y desaparecen a lo largo del intervalo en superficie. Al reabsorberse no se esfuman en el sitio: viajan <b>de los tejidos a la sangre, de la sangre a los alveolos y salen por la vía aérea</b> con el aire espirado, que es el camino real por el que el organismo se deshace del N₂. Aquí se representa <b>un solo tejido rápido</b> (período 2 min), que por eso se satura a los 8 min de fondo; los tejidos medios y lentos van mucho más despacio y ni se saturan en una inmersión recreativa —<b>nivel 2</b>—. El relleno completo del recipiente es la saturación a <b>esta</b> profundidad, no el tope de lo que un tejido puede admitir. Y en realidad las microburbujas no se forman con cualquier sobresaturación, sino al superar la <b>sobresaturación crítica</b> —<b>nivel 3</b>—.</p>
+
+</div>
+
+<script>
+window.addEventListener('error',function(e){
+  var d=document.getElementById('jsError');
+  if(d){ d.hidden=false;
+         d.textContent='La animación no ha podido arrancar en este navegador. '+
+                       (e.message||'')+' ('+(e.filename||'')+':'+(e.lineno||'')+')'; }
+});
+(function(){
+  "use strict";
+
+  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ================= 1. perfil y modelo de gas ================= */
+
+  var PROFILE = [
+    {t:0,d:0},  {t:2,d:24},  {t:17,d:24},   /* fondo 15 min */
+    {t:28,d:5},                             /* ascenso lento 11 min */
+    {t:31,d:5},                             /* parada de seguridad 3 min */
+    {t:32,d:0}, {t:57,d:0}                  /* salida + 25 min en superficie */
+  ];
+  var TOTAL_T = 57;
+
+  function depthAt(t){
+    t = Math.max(0, Math.min(TOTAL_T, t));
+    for (var i=0;i<PROFILE.length-1;i++){
+      var a=PROFILE[i], b=PROFILE[i+1];
+      if (t>=a.t && t<=b.t){
+        if (b.t===a.t) return b.d;
+        return a.d + (b.d-a.d)*((t-a.t)/(b.t-a.t));
+      }
+    }
+    return PROFILE[PROFILE.length-1].d;
+  }
+
+  function pAmb(d){ return 1 + d/10; }
+
+  var P_H2O=0.0627, F_N2=0.79;
+  function n2Partial(d){ return Math.max(0,(pAmb(d)-P_H2O)*F_N2); }
+
+  var REF  = n2Partial(24);
+  var SURF = n2Partial(0)/REF;              /* equilibrio en superficie ~0.281 */
+
+  var TAU_ALV=0.30, TAU_BLOOD=0.90;
+  var TAU_TISSUE = 2/Math.LN2;              /* periodo 2 min -> satura a los 8 min de fondo */
+  var TOL = 0.05;
+  var GRAD_MAX = 0.19;                      /* gradiente maximo con este perfil */
+
+  function phaseAt(t){
+    if (t<2)  return ['Descenso','Descenso a 24 m — sube la presión y con ella el N₂ de los alveolos.'];
+    if (t<17) return ['Fondo','Fondo a 24 m (15 min) — la sangre lleva el N₂ hasta los tejidos.'];
+    if (t<28) return ['Ascenso lento','Ascenso lento y progresivo — los tejidos quedan sobresaturados y aparecen microburbujas.'];
+    if (t<31) return ['Parada de seguridad','Parada de seguridad a 5 m — baja el gradiente y las microburbujas se reabsorben.'];
+    if (t<32) return ['Ascenso final','Últimos metros: al salir, la sobresaturación repunta.'];
+    return ['Intervalo en superficie','En superficie: los tejidos devuelven poco a poco el N₂ que les sobra.'];
+  }
+
+  /* ================= 2. estado ================= */
+
+  var t=0, alv=SURF, blood=SURF, tissue=SURF;
+  var playing=false;
+  var SIM_SPEED = TOTAL_T/115;              /* ~115 s de reproduccion */
+
+  function stepState(dtMin){
+    var target=n2Partial(depthAt(t))/REF;
+    alv    += (target-alv)   *(1-Math.exp(-dtMin/TAU_ALV));
+    blood  += (alv-blood)    *(1-Math.exp(-dtMin/TAU_BLOOD));
+    tissue += (blood-tissue) *(1-Math.exp(-dtMin/TAU_TISSUE));
+  }
+
+  function recomputeStateAt(targetT){
+    var a=SURF,b=SURF,ti=SURF,tt=0,step=0.02;
+    while (tt<targetT){
+      var dt=Math.min(step,targetT-tt);
+      var target=n2Partial(depthAt(tt+dt/2))/REF;
+      a  += (target-a)*(1-Math.exp(-dt/TAU_ALV));
+      b  += (a-b)     *(1-Math.exp(-dt/TAU_BLOOD));
+      ti += (b-ti)    *(1-Math.exp(-dt/TAU_TISSUE));
+      tt += dt;
+    }
+    return {a:a,b:b,ti:ti};
+  }
+
+  /* ================= 3. grafica de perfil ================= */
+
+  var svgNS='http://www.w3.org/2000/svg';
+  var D_MIN=-1.6, D_MAX=27;
+  var PLOT_X0, PLOT_X1, PLOT_Y0, PLOT_Y1, diverScale=0.72;
+
+  function timeToX(tt){ return PLOT_X0 + (tt/TOTAL_T)*(PLOT_X1-PLOT_X0); }
+  function depthToY(d){ return PLOT_Y0 + ((d-D_MIN)/(D_MAX-D_MIN))*(PLOT_Y1-PLOT_Y0); }
+
+  var profileSvg=document.getElementById('profileSvg');
+  var depthGrid =document.getElementById('depthGrid');
+  var timeGrid  =document.getElementById('timeGrid');
+  var axisYEl   =document.getElementById('axisY');
+  var axisXEl   =document.getElementById('axisX');
+  var labDepth  =document.getElementById('labDepth');
+  var labTime   =document.getElementById('labTime');
+  var pathGhost =document.getElementById('profileGhost');
+  var pathTrav  =document.getElementById('profileTraveled');
+
+  var segLen=[], cumLen=[0], totalLen=0;
+
+  /* En pantalla estrecha el perfil pasa a banda ancha y baja, para que
+     quepa junto a los compartimentos sin tener que hacer scroll.        */
+  function layoutProfile(){
+    var narrow = window.innerWidth <= 820;
+    var W,H,fs;
+    if (narrow){
+      W=640; H=178; PLOT_X0=42; PLOT_X1=628; PLOT_Y0=14; PLOT_Y1=142;
+      fs=11.5; diverScale=0.80;
+    } else {
+      W=400; H=520; PLOT_X0=52; PLOT_X1=382; PLOT_Y0=30; PLOT_Y1=478;
+      fs=10.5; diverScale=0.72;
+    }
+    profileSvg.setAttribute('viewBox','0 0 '+W+' '+H);
+
+    while (depthGrid.firstChild) depthGrid.removeChild(depthGrid.firstChild);
+    while (timeGrid.firstChild)  timeGrid.removeChild(timeGrid.firstChild);
+
+    (narrow?[0,10,20]:[0,5,10,15,20,25]).forEach(function(d){
+      var y=depthToY(d);
+      var ln=document.createElementNS(svgNS,'line');
+      ln.setAttribute('x1',PLOT_X0); ln.setAttribute('x2',PLOT_X1);
+      ln.setAttribute('y1',y);       ln.setAttribute('y2',y);
+      ln.setAttribute('stroke','#173a4c'); ln.setAttribute('stroke-width','1');
+      depthGrid.appendChild(ln);
+      var tx=document.createElementNS(svgNS,'text');
+      tx.setAttribute('x',PLOT_X0-7); tx.setAttribute('y',y+4);
+      tx.setAttribute('text-anchor','end'); tx.setAttribute('font-size',fs);
+      tx.textContent=d; depthGrid.appendChild(tx);
+    });
+
+    [0,10,20,30,40,50].forEach(function(m){
+      var x=timeToX(m);
+      var ln=document.createElementNS(svgNS,'line');
+      ln.setAttribute('x1',x); ln.setAttribute('x2',x);
+      ln.setAttribute('y1',PLOT_Y0); ln.setAttribute('y2',PLOT_Y1);
+      ln.setAttribute('stroke','#173a4c'); ln.setAttribute('stroke-width','1');
+      timeGrid.appendChild(ln);
+      var tx=document.createElementNS(svgNS,'text');
+      tx.setAttribute('x',x); tx.setAttribute('y',PLOT_Y1+(narrow?15:18));
+      tx.setAttribute('text-anchor','middle'); tx.setAttribute('font-size',fs);
+      tx.textContent=m; timeGrid.appendChild(tx);
+    });
+
+    axisYEl.setAttribute('x1',PLOT_X0); axisYEl.setAttribute('x2',PLOT_X0);
+    axisYEl.setAttribute('y1',PLOT_Y0); axisYEl.setAttribute('y2',PLOT_Y1);
+    axisXEl.setAttribute('x1',PLOT_X0); axisXEl.setAttribute('x2',PLOT_X1);
+    axisXEl.setAttribute('y1',PLOT_Y1); axisXEl.setAttribute('y2',PLOT_Y1);
+
+    labDepth.setAttribute('font-size',fs);
+    labTime.setAttribute('font-size',fs);
+    if (narrow){
+      labDepth.setAttribute('x',4);  labDepth.setAttribute('y',11);
+      labTime.setAttribute('x',(PLOT_X0+PLOT_X1)/2); labTime.setAttribute('y',H-4);
+    } else {
+      labDepth.setAttribute('x',12); labDepth.setAttribute('y',17);
+      labTime.setAttribute('x',(PLOT_X0+PLOT_X1)/2); labTime.setAttribute('y',H-8);
+    }
+
+    /* ruta + longitud de arco real -> linea y buceador sincronizados */
+    var pathD='';
+    PROFILE.forEach(function(p,i){
+      pathD += (i===0?'M':'L') + timeToX(p.t).toFixed(2) + ',' + depthToY(p.d).toFixed(2) + ' ';
+    });
+    segLen=[]; cumLen=[0]; totalLen=0;
+    for (var i=0;i<PROFILE.length-1;i++){
+      var dx=timeToX(PROFILE[i+1].t)-timeToX(PROFILE[i].t);
+      var dy=depthToY(PROFILE[i+1].d)-depthToY(PROFILE[i].d);
+      var L=Math.sqrt(dx*dx+dy*dy);
+      segLen.push(L); totalLen+=L; cumLen.push(totalLen);
+    }
+    pathGhost.setAttribute('d',pathD.trim());
+    pathTrav.setAttribute('d',pathD.trim());
+    pathTrav.style.strokeDasharray=totalLen;
+    pathTrav.style.strokeDashoffset=totalLen-arcAt(t);
+  }
+
+  function arcAt(tt){
+    for (var i=0;i<PROFILE.length-1;i++){
+      var a=PROFILE[i], b=PROFILE[i+1];
+      if (tt>=a.t && tt<=b.t){
+        var f=(b.t===a.t)?1:(tt-a.t)/(b.t-a.t);
+        return cumLen[i]+f*segLen[i];
+      }
+    }
+    return totalLen;
+  }
+
+  var diverGroup=document.getElementById('diverGroup');
+  var bubbleNodes=document.getElementById('diverBubbles').querySelectorAll('circle');
+  var bubblePhase=[0,0.37,0.71];
+
+  function depthRate(tt){
+    var h=0.05;
+    return (depthAt(Math.min(TOTAL_T,tt+h))-depthAt(Math.max(0,tt-h)))/(2*h);
+  }
+
+  function drawProfile(timeNow){
+    var d=depthAt(t), x=timeToX(t), y=depthToY(d);
+    var pitch=Math.max(-32,Math.min(32,depthRate(t)*2.2));
+    diverGroup.setAttribute('transform',
+      'translate('+x.toFixed(2)+','+y.toFixed(2)+') rotate('+pitch.toFixed(1)+') scale('+diverScale+')');
+    pathTrav.style.strokeDashoffset = totalLen - arcAt(t);
+
+    for (var i=0;i<bubbleNodes.length;i++){
+      var ph=(timeNow*0.42+bubblePhase[i])%1;
+      bubbleNodes[i].setAttribute('cx',(x+9+i*2.6-ph*3).toFixed(2));
+      bubbleNodes[i].setAttribute('cy',(y-9-ph*26).toFixed(2));
+      bubbleNodes[i].setAttribute('opacity',(0.55*(1-ph)).toFixed(2));
+    }
+  }
+
+  /* ================= 4. compartimentos ================= */
+
+  var VX={alv:{x:62,w:150}, blood:{x:275,w:150}, tissue:{x:488,w:150}};
+  var PAD=8;
+  /* saturacion completa = 75% del recipiente: asi no parece que el tope
+     del dibujo sea el maximo fisico al que un tejido puede cargarse */
+  var FILL_SCALE=0.75;
+  var V_Y, V_H, INNER_H, BOTTOM_Y, USABLE_H, pipeY, COMP_H=520;
+
+  function layout(g,cx){
+    var o=g.querySelector('.v-outline');
+    o.setAttribute('x',cx.x); o.setAttribute('y',V_Y);
+    o.setAttribute('width',cx.w); o.setAttribute('height',V_H);
+    ['.v-base','.v-excess'].forEach(function(sel){
+      var r=g.querySelector(sel);
+      r.setAttribute('x',cx.x+PAD); r.setAttribute('width',cx.w-PAD*2);
+    });
+    var s=g.querySelector('.v-surface');
+    s.setAttribute('x1',cx.x+PAD); s.setAttribute('x2',cx.x+cx.w-PAD);
+    var lb=g.querySelector('.vessel-label');
+    lb.setAttribute('x',cx.x+cx.w/2); lb.setAttribute('y',V_Y+V_H+30);
+  }
+
+  var compSvg=document.getElementById('compSvg');
+  var gAlv=document.getElementById('vesselAlv');
+  var gBlood=document.getElementById('vesselBlood');
+  var gTissue=document.getElementById('vesselTissue');
+  var labAir=document.getElementById('labAir');
+  var labTissue=document.getElementById('labTissue');
+
+  function layoutPipe(id,from,to){
+    var p=document.getElementById(id);
+    p.setAttribute('x',from.x+from.w); p.setAttribute('y',pipeY-11);
+    p.setAttribute('width',to.x-(from.x+from.w)); p.setAttribute('height',22);
+  }
+
+  /* via aerea: por aqui entra y sale el gas del organismo */
+  var AIR_X0=6, AIR_X1=VX.alv.x;
+  var pipe0=document.getElementById('pipe0');
+  var pipe0Flow=document.getElementById('pipe0Flow');
+  var pipe1Flow=document.getElementById('pipe1Flow');
+  var pipe2Flow=document.getElementById('pipe2Flow');
+  var dashOffset=0;
+
+  /* En pantalla estrecha los recipientes se acortan para que el conjunto
+     quepa en una pantalla de movil junto al perfil.                      */
+  function layoutCompartments(){
+    var narrow = window.innerWidth <= 820;
+    COMP_H = narrow ? 436 : 520;
+    V_Y    = narrow ? 56  : 72;
+    V_H    = narrow ? 288 : 344;
+
+    INNER_H  = V_H-PAD*2;
+    BOTTOM_Y = V_Y+V_H-PAD;
+    USABLE_H = INNER_H*FILL_SCALE;
+    pipeY    = V_Y+V_H/2;
+
+    compSvg.setAttribute('viewBox','0 0 700 '+COMP_H);
+
+    layout(gAlv,VX.alv); layout(gBlood,VX.blood); layout(gTissue,VX.tissue);
+    layoutPipe('pipe1',VX.alv,VX.blood);
+    layoutPipe('pipe2',VX.blood,VX.tissue);
+
+    pipe0.setAttribute('x',AIR_X0); pipe0.setAttribute('y',pipeY-11);
+    pipe0.setAttribute('width',(AIR_X1+6)-AIR_X0); pipe0.setAttribute('height',22);
+
+    [pipe0Flow,pipe1Flow,pipe2Flow].forEach(function(l){
+      l.setAttribute('y1',pipeY); l.setAttribute('y2',pipeY);
+    });
+
+    labAir.setAttribute('y',V_Y-16);
+    labTissue.setAttribute('y',V_Y-16);
+  }
+
+  function levelY(frac){ return BOTTOM_Y - Math.max(0,Math.min(1,frac))*USABLE_H; }
+
+  function paintVessel(g,level,ref,excessColor,edgeColor){
+    var lo=Math.min(level,ref);
+    var yBase=levelY(lo), yTop=levelY(level);
+    var base=g.querySelector('.v-base');
+    base.setAttribute('y',yBase);
+    base.setAttribute('height',Math.max(0,BOTTOM_Y-yBase));
+    var exc=g.querySelector('.v-excess');
+    var hasExcess = level > ref + 0.002;
+    if (hasExcess){
+      exc.setAttribute('y',yTop);
+      exc.setAttribute('height',Math.max(0,yBase-yTop));
+      exc.setAttribute('fill',excessColor);
+    } else {
+      exc.setAttribute('height',0);
+    }
+    var srf=g.querySelector('.v-surface');
+    srf.setAttribute('y1',yTop); srf.setAttribute('y2',yTop);
+    srf.setAttribute('stroke', hasExcess ? edgeColor : '#3ddc84');
+  }
+
+  function setFlow(line,xL,xR,flux,color){
+    if (flux>=0){ line.setAttribute('x1',xL); line.setAttribute('x2',xR); }
+    else        { line.setAttribute('x1',xR); line.setAttribute('x2',xL); }
+    line.setAttribute('stroke',color);
+    line.setAttribute('marker-end', color==='#f5922f' ? 'url(#arrowOut)' : 'url(#arrowIn)');
+    line.style.opacity=Math.min(1,Math.abs(flux)*9+0.15);
+    line.style.strokeDashoffset=dashOffset;
+  }
+
+  /* ================= 5. microburbujas (canvas) ================= */
+
+  var canvas=document.getElementById('bubblesCanvas');
+  var ctx=canvas.getContext('2d');
+  var CW=700;   /* ancho logico del lienzo; el alto lo marca COMP_H */
+
+  function resizeCanvas(){
+    var r=canvas.getBoundingClientRect();
+    var dpr=window.devicePixelRatio||1;
+    canvas.width =Math.max(1,Math.round(r.width*dpr));
+    canvas.height=Math.max(1,Math.round(r.height*dpr));
+    var s=(r.width/CW)*dpr;
+    ctx.setTransform(s,0,0,s,0,0);
+  }
+  function relayout(){ layoutProfile(); layoutCompartments(); resizeCanvas(); }
+  window.addEventListener('resize',relayout);
+  window.addEventListener('orientationchange',function(){ setTimeout(relayout,250); });
+
+  /* Las microburbujas nacen en los TEJIDOS cuando hay sobresaturacion.
+     Cuando el gradiente baja, unas pocas se van evacuando por la ruta real:
+     tejidos -> sangre -> alveolos -> via aerea -> fuera.                    */
+
+  var POOL=56;            /* objetos disponibles */
+  var TISSUE_MAX=24;      /* maximo residentes en tejidos */
+  var bubbles=[];
+  for (var bi=0; bi<POOL; bi++){
+    bubbles.push({
+      st:'off',                      /* off | tissue | p2 | blood | p1 | alv | out */
+      u: Math.random(), v: Math.random(), p: 0,
+      dwell: 0, dwellMax: 1.2,
+      rBase: 2,
+      rise: 0.020+Math.random()*0.030,
+      rs: 0.80+Math.random()*0.40,
+      phase: Math.random()*Math.PI*2,
+      wob: 0.5+Math.random()*0.9
+    });
+  }
+
+  /* Salida continua desde que hay sobresaturacion: lenta al principio
+     (gradiente pequeño) y mas rapida despues. Si ademas el gradiente cae,
+     se añade un extra para vaciar los tejidos.                              */
+  var evacAcc=0, EVAC_BASE=2.0, EVAC_SURPLUS=2.8;
+  var SP_PIPE=1.15, SP_VESSEL=0.72, SP_OUT=0.95;
+  var bubbleRawR=1.3;
+
+  function resetBubbles(){
+    for (var i=0;i<bubbles.length;i++) bubbles[i].st='off';
+    evacAcc=0;
+  }
+
+  function depart(b){
+    b.st='p2'; b.p=0;
+    b.rBase=bubbleRawR*b.rs;          /* congela su tamaño al salir del tejido */
+  }
+
+  function updateBubbles(grad,dtSec){
+    var g=Math.max(0,Math.min(1,(grad-TOL)/(GRAD_MAX-TOL)));
+    bubbleRawR = 1.3 + g*2.0;
+    var desired = (grad>TOL) ? Math.round(g*TISSUE_MAX) : 0;
+
+    var inTissue=0, free=[];
+    for (var i=0;i<bubbles.length;i++){
+      if (bubbles[i].st==='tissue') inTissue++;
+      else if (bubbles[i].st==='off') free.push(bubbles[i]);
+    }
+
+    /* se forman nuevas en los tejidos */
+    while (inTissue<desired && free.length){
+      var nb=free.pop();
+      nb.st='tissue'; nb.u=Math.random(); nb.v=Math.random();
+      inTissue++;
+    }
+
+    /* caudal de salida hacia la sangre */
+    var rate = (desired>0 || inTissue>0) ? EVAC_BASE*(0.15+0.85*g) : 0;
+    if (inTissue>desired) rate += EVAC_SURPLUS;
+
+    evacAcc += rate*dtSec;
+    var n=Math.floor(evacAcc);
+    if (n>0){
+      evacAcc-=n;
+      for (var j=0;j<bubbles.length && n>0;j++){
+        if (bubbles[j].st==='tissue'){ depart(bubbles[j]); n--; inTissue--; }
+      }
+    }
+
+    /* avance por la ruta de salida */
+    for (var k=0;k<bubbles.length;k++){
+      var b=bubbles[k];
+      switch(b.st){
+        case 'tissue':
+          if(!reduceMotion){ b.v+=b.rise*dtSec; if(b.v>1) b.v-=1; }
+          break;
+        case 'p2':
+          b.p+=SP_PIPE*dtSec;
+          if(b.p>=1){ b.st='blood'; b.p=0; b.dwell=0;
+                      b.dwellMax=1.2+Math.random()*1.6;
+                      b.u=Math.random(); b.v=Math.random(); }
+          break;
+        case 'blood':                       /* se acumulan un poco en la sangre */
+          if(!reduceMotion){ b.v+=b.rise*0.8*dtSec; if(b.v>1) b.v-=1; }
+          b.dwell+=dtSec;
+          if(b.dwell>=b.dwellMax){ b.st='p1'; b.p=0; }
+          break;
+        case 'p1':  b.p+=SP_PIPE*dtSec;   if(b.p>=1){b.st='alv'; b.p=0;} break;
+        case 'alv': b.p+=SP_VESSEL*dtSec; if(b.p>=1){b.st='out'; b.p=0;} break;
+        case 'out': b.p+=SP_OUT*dtSec;    if(b.p>=1){b.st='off';}        break;
+      }
+    }
+  }
+
+  function lerp(a,b,f){ return a+(b-a)*f; }
+
+  function drawBubbles(timeNow){
+    /* Boyle: la burbuja libre se expande segun sube el buceador */
+    var boyle=Math.pow(1/pAmb(depthAt(t)),1/3);
+    var xTL=VX.tissue.x+PAD+10, xTW=VX.tissue.w-PAD*2-20;
+    var xBL=VX.blood.x+PAD+10,  xBW=VX.blood.w-PAD*2-20;
+    var fillT=Math.max(12, tissue*USABLE_H-12);
+    var fillB=Math.max(12, blood*USABLE_H-12);
+
+    for (var i=0;i<bubbles.length;i++){
+      var b=bubbles[i];
+      if (b.st==='off') continue;
+
+      var wob=reduceMotion?0:Math.sin(timeNow*b.wob+b.phase)*2.2;
+      var x, y=pipeY+wob, r, alpha=1;
+
+      if (b.st==='tissue'){
+        x = xTL + b.u*xTW + wob;
+        y = BOTTOM_Y - 6 - b.v*fillT;
+        r = bubbleRawR*b.rs*boyle;
+      } else if (b.st==='blood'){
+        x = xBL + b.u*xBW + wob;
+        y = BOTTOM_Y - 6 - b.v*fillB;
+        r = b.rBase*boyle;
+      } else {
+        r = b.rBase*boyle;
+        if      (b.st==='p2')  x = lerp(VX.tissue.x, VX.blood.x+VX.blood.w, b.p);
+        else if (b.st==='p1')  x = lerp(VX.blood.x, VX.alv.x+VX.alv.w, b.p);
+        else if (b.st==='alv') x = lerp(VX.alv.x+VX.alv.w-6, VX.alv.x+6, b.p);
+        else {
+          x = lerp(VX.alv.x, AIR_X0+9, b.p);
+          alpha = 1 - Math.max(0,(b.p-0.5)/0.5);        /* se espira y desaparece */
+        }
+      }
+
+      if (r<=0.2 || alpha<=0.02) continue;
+
+      ctx.globalAlpha=alpha;
+      ctx.beginPath();
+      ctx.arc(x,y,r,0,Math.PI*2);
+      ctx.fillStyle='rgba(255,242,221,0.20)';
+      ctx.fill();
+      ctx.lineWidth=1.1;
+      ctx.strokeStyle='rgba(255,242,221,0.92)';
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(x-r*0.32,y-r*0.34,Math.max(0.45,r*0.24),0,Math.PI*2);
+      ctx.fillStyle='rgba(255,255,255,0.85)';
+      ctx.fill();
+      ctx.globalAlpha=1;
+    }
+  }
+
+  /* ================= 6. HUD y bucle ================= */
+
+  var depthValue=document.getElementById('depthValue');
+  var timeValue =document.getElementById('timeValue');
+  var phaseTag  =document.getElementById('phaseTag');
+  var phaseText =document.getElementById('phaseText');
+  var statusCard=document.getElementById('statusCard');
+  var statusName=document.getElementById('statusName');
+  var statusNote=document.getElementById('statusNote');
+  var scrub     =document.getElementById('scrub');
+  var playBtn   =document.getElementById('playBtn');
+
+  var STATES={
+    'in' :['Tejidos insaturados','Los tejidos admiten más N₂ del que tienen: el gas sigue entrando.'],
+    'eq' :['Tejidos saturados','Equilibrio: los tejidos contienen el N₂ que corresponde a esta presión. No hay flujo neto.'],
+    'out':['Tejidos sobresaturados','Los tejidos llevan más N₂ del que corresponde a esta presión: el gas debe salir y aparecen microburbujas.']
+  };
+  var lastState=null;
+
+  function fmt(min){
+    var s=Math.round(min*60), m=Math.floor(s/60), r=s%60;
+    return (m<10?'0':'')+m+':'+(r<10?'0':'')+r;
+  }
+
+  var scrubbing=false;
+
+  function updateHUD(){
+    depthValue.textContent=Math.round(depthAt(t))+' m';
+    timeValue.textContent=fmt(t);
+    var ph=phaseAt(t);
+    phaseTag.textContent=ph[0];
+    phaseText.textContent=ph[1];
+    if (!scrubbing) scrub.value=Math.round((t/TOTAL_T)*1000);
+  }
+
+  function updateStatus(){
+    var st=(alv-tissue>TOL)?'in':(tissue-alv>TOL)?'out':'eq';
+    if (st!==lastState){
+      lastState=st;
+      statusCard.className='status-card is-'+st;
+      statusName.textContent=STATES[st][0];
+      statusNote.textContent=STATES[st][1];
+    }
+  }
+
+  scrub.addEventListener('input',function(){
+    scrubbing=true; playing=false; playBtn.textContent='▶ Bucear';
+    t=(scrub.value/1000)*TOTAL_T;
+    var s=recomputeStateAt(t); alv=s.a; blood=s.b; tissue=s.ti;
+    resetBubbles();
+    updateHUD(); updateStatus();
+  });
+  scrub.addEventListener('change',function(){scrubbing=false;});
+
+  playBtn.addEventListener('click',function(){
+    if (t>=TOTAL_T){ t=0; alv=blood=tissue=SURF; resetBubbles(); }
+    playing=!playing;
+    playBtn.textContent=playing?'❚❚ Pausa':'▶ Bucear';
+  });
+
+  document.getElementById('restartBtn').addEventListener('click',function(){
+    t=0; alv=blood=tissue=SURF; playing=false;
+    playBtn.textContent='▶ Bucear';
+    resetBubbles();
+    updateHUD(); updateStatus();
+  });
+
+  var lastTs=null;
+  function frame(ts){
+    if (lastTs===null) lastTs=ts;
+    var dtSec=Math.min(0.05,(ts-lastTs)/1000);
+    lastTs=ts;
+
+    if (playing && t<TOTAL_T){
+      var dtMin=dtSec*SIM_SPEED;
+      t=Math.min(TOTAL_T,t+dtMin);
+      stepState(dtMin);
+      if (t>=TOTAL_T){ playing=false; playBtn.textContent='▶ Bucear'; }
+    }
+
+    var ambient=n2Partial(depthAt(t))/REF;
+    var flux0=ambient-alv, flux1=alv-blood, flux2=blood-tissue;
+    var saturating=(alv>=tissue);
+    var ref=saturating?tissue:alv;
+    var excessColor=saturating?'rgba(168,255,207,0.42)':'rgba(245,146,47,0.44)';
+    var edgeColor  =saturating?'#a8ffcf':'#f5922f';
+
+    if (!reduceMotion) dashOffset -= dtSec*34;
+
+    paintVessel(gAlv,    alv,    ref, excessColor, edgeColor);
+    paintVessel(gBlood,  blood,  ref, excessColor, edgeColor);
+    paintVessel(gTissue, tissue, ref, excessColor, edgeColor);
+
+    setFlow(pipe0Flow, AIR_X0+9,                VX.alv.x-5,    flux0, edgeColor);
+    setFlow(pipe1Flow, VX.alv.x+VX.alv.w+5,     VX.blood.x-5,  flux1, edgeColor);
+    setFlow(pipe2Flow, VX.blood.x+VX.blood.w+5, VX.tissue.x-5, flux2, edgeColor);
+
+    var timeNow=ts/1000;
+    drawProfile(timeNow);
+    updateHUD();
+    updateStatus();
+
+    updateBubbles(tissue-alv, dtSec);
+    ctx.clearRect(0,0,CW,COMP_H+40);
+    drawBubbles(timeNow);
+
+    requestAnimationFrame(frame);
+  }
+
+  var jsCheck=document.getElementById('jsCheck');
+  if (jsCheck && jsCheck.parentNode) jsCheck.parentNode.removeChild(jsCheck);
+
+  relayout(); updateHUD(); updateStatus();
+  /* si las tipografias llegan tarde la caja cambia: se vuelve a medir */
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(relayout);
+  setTimeout(relayout,400);
+  requestAnimationFrame(frame);
+
+})();
+</script>
+
+</body>
+</html>
